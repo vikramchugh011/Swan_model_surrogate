@@ -1,0 +1,56 @@
+tic("code")
+data = read.csv("wave_data.csv")
+library(caTools)
+set.seed(100)
+split = sample.split(data$wave_height, SplitRatio = 0.7)
+
+train = subset(data, split == TRUE)
+test = subset(data, split == FALSE)
+rsq <- function (u, v) cor(u, v) ^ 2
+
+#cross validation
+library(hydroGOF)
+library(caret)
+library(e1071)
+library(kernlab)
+folds = createFolds(train$wave_height, k = 10)
+cv = lapply(folds, function(x){
+    train_fold = train[-x, ]
+    test_fold = train[x, ]
+    
+    svm_model = ksvm(wave_height~., train_fold, kernel = "rbfdot")
+    pred = predict(svm_model, test_fold)
+    R.sqrd = rsq(test_fold$wave_height, pred)
+    return(R.sqrd)
+})
+
+svm_rsq = mean(as.numeric(cv))
+svm_rsq
+
+svm_model = ksvm(wave_height~., train, kernel = "rbfdot")
+pred = predict(svm_model, test)
+rmse_svm = rmse(as.numeric(pred), test$wave_height)
+pred_svm = pred
+
+library(neuralnet)
+library(caret)
+folds = createFolds(train$wave_height, k = 10)
+cv = lapply(folds, function(x){
+  train_fold = train[-x, ]
+  test_fold = train[x, ]
+  
+  lm_model = lm(wave_height~., train_fold)
+  pred = predict(lm_model, test_fold)
+  R.sqrd = rsq(test_fold$wave_height, pred)
+  return(R.sqrd)
+})
+lm_rsq = mean(as.numeric(cv))
+lm_rsq
+
+lm_model = lm(wave_height~., train)
+pred = predict(lm_model, test)
+rmse_lm = rmse(as.numeric(pred), test$wave_height)
+pred_lm = pred
+actual = test$wave_height
+toc("code")
+
